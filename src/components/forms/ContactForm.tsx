@@ -3,6 +3,7 @@
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { SITE_EMAIL } from "@/lib/site";
+import { submitNetlifyForm } from "@/lib/submitNetlifyForm";
 
 /**
  * POST /api/submit-lead → n8n webhook (required) + Google Sheets (soft-fail, same request).
@@ -50,6 +51,16 @@ export function ContactForm() {
         return;
       }
 
+      try {
+        await submitNetlifyForm("contact", {
+          name: leadPayload.fullName,
+          email: leadPayload.email,
+          phone: leadPayload.phone,
+        });
+      } catch {
+        // Netlify form is secondary; don't block the visitor.
+      }
+
       router.push("/thank-you");
     } catch {
       setStatus("error");
@@ -62,7 +73,20 @@ export function ContactForm() {
   const labelClass = "mb-1 block text-sm font-medium text-heading";
 
   return (
-    <form onSubmit={handleSubmit} className="min-w-0 space-y-5">
+    <form
+      name="contact"
+      method="POST"
+      action="/__forms.html"
+      onSubmit={handleSubmit}
+      className="min-w-0 space-y-5"
+    >
+      <input type="hidden" name="form-name" value="contact" />
+      <p className="hidden" aria-hidden="true">
+        <label>
+          Do not fill this out:{" "}
+          <input name="bot-field" tabIndex={-1} autoComplete="off" />
+        </label>
+      </p>
       <div className="min-w-0">
         <label htmlFor="name" className={labelClass}>
           Full name *
